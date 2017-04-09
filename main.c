@@ -13,6 +13,15 @@ struct PGMImage{
 	int image[512][512];
 };
 
+struct Params{
+	int beginRow;
+	int endRow;
+	int beginColumn;
+	int endColumn;
+	struct PGMImage *image;
+	FILE *input;
+};
+
 /* Function executed by the thread */
 void *do_something (void *param){
 	/* Implement what the thread will have to do */
@@ -20,18 +29,19 @@ void *do_something (void *param){
 }
 
 /* Updates the pixel values of a given portion of the image */
-void updateValues(int beginRow, int endRow, int beginColumn, int endColumn, struct PGMImage *image, FILE *input){
+void *updateValues(void *parameters){
+	struct Params *params = parameters;
 	int currentValue, numRows, numColumns;
 	
 	/* Reads and updates in the struct image the values in every pixel */
-	for(numRows=beginRow; numRows<endRow; numRows++){
-		for(numColumns=beginColumn; numColumns<endColumn; numColumns++){
-			fscanf(input, "%d", &currentValue);
+	for(numRows=params->beginRow; numRows<params->endRow; numRows++){
+		for(numColumns=params->beginColumn; numColumns<params->endColumn; numColumns++){
+			fscanf(params->input, "%d", &currentValue);
 			/* Making sure we do not try to set a pixel with more than 255 */
 			if(currentValue <= 200){
-				image->image[numRows][numColumns] = currentValue + 55;
+				params->image->image[numRows][numColumns] = currentValue + 55;
 			} else{
-				image->image[numRows][numColumns] = 255;
+				params->image->image[numRows][numColumns] = 255;
 			}
 		}
 	}
@@ -46,6 +56,7 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Variable to assist with the threads control */
 	int threadCounter;
 	pthread_t threadId[nThreads];
+	struct Params params;
 	
 	/* Open the file for reading */
 	input = fopen(fileName, "r");
@@ -73,7 +84,7 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	printf("\nNumber of rows: %d \nNumber of columns: %d \nMax brightness value: %d", image->numRows, image->numColumns, image->maxValue);
 	
 	/* Reads each of the pixels and adds up 55 pixels to each */
-	printf("\nStart reading the pixels of the image");
+	printf("\nStart reading the pixels of the image"); 
 	
 	/* If the number of threads is 1 we execute the reading in the main thread, otherwise we create children */
 	if(nThreads>1){
@@ -81,7 +92,15 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 			//pthread_create(&threadId[threadCounter], NULL, function, arguments);	
 		}
 	} else{
-		updateValues(0, image->numRows, 0, image->numColumns, image, input);
+		/* Set the parameters to be passed to the method that set the Image struct */
+		params.beginColumn = 0;
+		params.beginRow = 0;
+		params.endColumn = image->numColumns;
+		params.endRow = image->numRows;
+		params.image = image;
+		params.input = input;
+		
+		updateValues(&params);
 	}
 	
 	/* Close the file */
