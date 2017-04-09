@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys\timeb.h>
 
 /* run this program using the console pauser or add your own getch, system("pause") or input loop */
 
@@ -39,7 +40,6 @@ void *updateValues(void *parameters){
 			}
 		}
 	}
-	printf("\nFinish reading the pixels of the image");
 }
 
 /* Read the image */
@@ -47,10 +47,14 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Variables to assist with the image reading */
 	FILE *input;
 	
-	/* Variable to assist with the threads control */
+	/* Variables to assist with the threads control */
 	int threadCounter, rowsByThread, columnsByThread;
 	pthread_t threadId[nThreads];
-	struct Params params;
+	struct Params params[nThreads];
+	
+	/* Variables to control the time measuring */
+	struct timeb start, end;
+	int finalTime;
 	
 	/* Open the file for reading */
 	input = fopen(fileName, "r");
@@ -84,18 +88,21 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	rowsByThread = image->numRows/nThreads;
 	columnsByThread = image->numColumns/nThreads;
 	
+	/* Start a counter */
+	ftime(&start);
+	
 	/* If the number of threads is 1 we execute the reading in the main thread, otherwise we create children */
 	if(nThreads>1){
 		for(threadCounter=0; threadCounter<nThreads; threadCounter++){
 			/* Set the parameters to be passed to the method that set the Image struct */
-			params.beginColumn = threadCounter*columnsByThread;
-			params.beginRow = threadCounter*rowsByThread;
-			params.endColumn = ((threadCounter+1)*columnsByThread)-1;
-			params.endRow = ((threadCounter+1)*rowsByThread)-1;
-			params.image = image;
-			params.input = input;
+			params[threadCounter].beginColumn = threadCounter*columnsByThread;
+			params[threadCounter].beginRow = threadCounter*rowsByThread;
+			params[threadCounter].endColumn = ((threadCounter+1)*columnsByThread)-1;
+			params[threadCounter].endRow = ((threadCounter+1)*rowsByThread)-1;
+			params[threadCounter].image = image;
+			params[threadCounter].input = input;
 			
-			pthread_create(&threadId[threadCounter], NULL, updateValues, &params);	
+			pthread_create(&threadId[threadCounter], NULL, updateValues, &params[threadCounter]);	
 		}
 		
 		for(threadCounter=0; threadCounter<nThreads; threadCounter++){
@@ -103,15 +110,22 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 		}
 	} else{
 		/* Set the parameters to be passed to the method that set the Image struct */
-		params.beginColumn = 0;
-		params.beginRow = 0;
-		params.endColumn = image->numColumns;
-		params.endRow = image->numRows;
-		params.image = image;
-		params.input = input;
+		params[0].beginColumn = 0;
+		params[0].beginRow = 0;
+		params[0].endColumn = image->numColumns;
+		params[0].endRow = image->numRows;
+		params[0].image = image;
+		params[0].input = input;
 		
-		updateValues(&params);
+		updateValues(&params[0]);
 	}
+	
+	printf("\nFinish reading the pixels of the image");
+	
+	/* End the timer and get result */
+	ftime(&end);
+	finalTime = (int) (1000.0 * (end.time - start.time) + (end.millitm - start.millitm));
+	printf("\nTime to read file and record on image struct with %d thread(s): %d milliseconds", nThreads, finalTime);
 	
 	/* Close the file */
 	fclose(input);
@@ -157,10 +171,10 @@ int main(int argc, char *argv[]) {
 	struct PGMImage image;
 	
 	/* Variable for the threads creation */	
-	int numThreads = 2;
+	int numThreads = 1;
 	
 	/* Calls method to read PGM image */
-	readImage(argv[1], &image, 1);
+	readImage(argv[1], &image, numThreads);
 	
 	/* Calls method to write the new PGM image*/
 	saveImage(argv[2], &image);
