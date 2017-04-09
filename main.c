@@ -19,19 +19,15 @@ void *do_something (void *param){
 	printf("\nHello World! %d", (int)param);
 }
 
-int main(int argc, char *argv[]) {
-	/* Variables to read the PGM image */
-	struct PGMImage image;
+/* Read the image */
+void readImage(char *fileName[], struct PGMImage image){
+	/* Variables to assist with the image reading */
 	FILE *input;
 	int currentValue, numRows, numColumns;
 	
-	/* Variable for the threads creation */	
-	pthread_t thread0;
-	int parameter = 0;
-	
 	/* Open the file (filename received as parameter) for reading */
-	input = fopen(argv[1], "r+");
-	printf("\nOpening file: %s", argv[1]);
+	input = fopen(fileName, "r");
+	printf("\nOpening file: %s", fileName);
 	
 	/* Read the first line related to the image type */
 	fscanf(input, "%s", &image.type);
@@ -68,7 +64,19 @@ int main(int argc, char *argv[]) {
 	
 	/* Close the file */
 	fclose(input);
-	printf("\nClosed the file");
+	printf("\nClosed the file");	
+}
+
+int main(int argc, char *argv[]) {
+	/* Struct to save the image values */
+	struct PGMImage image;
+	
+	/* Variable for the threads creation */	
+	pthread_t thread0;
+	int parameter = 0;
+	
+	/* Calls method to read PGM image */
+	readImage(argv[1], image);
 	
 	pthread_create(&thread0, NULL, do_something, parameter);
 	pthread_join(thread0, NULL);
