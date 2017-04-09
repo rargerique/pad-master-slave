@@ -19,11 +19,33 @@ void *do_something (void *param){
 	printf("\nHello World! %d", (int)param);
 }
 
+/* Updates the pixel values of a given portion of the image */
+void updateValues(int beginRow, int endRow, int beginColumn, int endColumn, struct PGMImage *image, FILE *input){
+	int currentValue, numRows, numColumns;
+	
+	/* Reads and updates in the struct image the values in every pixel */
+	for(numRows=beginRow; numRows<endRow; numRows++){
+		for(numColumns=beginColumn; numColumns<endColumn; numColumns++){
+			fscanf(input, "%d", &currentValue);
+			/* Making sure we do not try to set a pixel with more than 255 */
+			if(currentValue <= 200){
+				image->image[numRows][numColumns] = currentValue + 55;
+			} else{
+				image->image[numRows][numColumns] = 255;
+			}
+		}
+	}
+	printf("\nFinish reading the pixels of the image");
+}
+
 /* Read the image */
-void readImage(char *fileName[], struct PGMImage *image){
+void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Variables to assist with the image reading */
 	FILE *input;
-	int currentValue, numRows, numColumns;
+	
+	/* Variable to assist with the threads control */
+	int threadCounter;
+	pthread_t threadId[nThreads];
 	
 	/* Open the file for reading */
 	input = fopen(fileName, "r");
@@ -52,16 +74,15 @@ void readImage(char *fileName[], struct PGMImage *image){
 	
 	/* Reads each of the pixels and adds up 55 pixels to each */
 	printf("\nStart reading the pixels of the image");
-	for(numRows=0; numRows<image->numRows; numRows++){
-		for(numColumns=0; numColumns<image->numColumns; numColumns++){
-			fscanf(input, "%d", &currentValue);
-			/* Making sure we do not try to set a pixel with more than 255 */
-			if(currentValue < 200){
-				image->image[numRows][numColumns] = currentValue + 55;
-			}
+	
+	/* If the number of threads is 1 we execute the reading in the main thread, otherwise we create children */
+	if(nThreads>1){
+		for(threadCounter=0; threadCounter<nThreads; threadCounter++){
+			//pthread_create(&threadId[threadCounter], NULL, function, arguments);	
 		}
+	} else{
+		updateValues(0, image->numRows, 0, image->numColumns, image, input);
 	}
-	printf("\nFinish reading the pixels of the image");
 	
 	/* Close the file */
 	fclose(input);
@@ -109,9 +130,10 @@ int main(int argc, char *argv[]) {
 	/* Variable for the threads creation */	
 	pthread_t thread0;
 	int parameter = 0;
+	int numThreads = 1;
 	
 	/* Calls method to read PGM image */
-	readImage(argv[1], &image);
+	readImage(argv[1], &image, 1);
 	
 	/* Calls method to write the new PGM image*/
 	saveImage(argv[2], &image);
