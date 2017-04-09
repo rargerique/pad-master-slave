@@ -22,12 +22,6 @@ struct Params{
 	FILE *input;
 };
 
-/* Function executed by the thread */
-void *do_something (void *param){
-	/* Implement what the thread will have to do */
-	printf("\nHello World! %d", (int)param);
-}
-
 /* Updates the pixel values of a given portion of the image */
 void *updateValues(void *parameters){
 	struct Params *params = parameters;
@@ -54,7 +48,7 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	FILE *input;
 	
 	/* Variable to assist with the threads control */
-	int threadCounter;
+	int threadCounter, rowsByThread, columnsByThread;
 	pthread_t threadId[nThreads];
 	struct Params params;
 	
@@ -86,10 +80,26 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Reads each of the pixels and adds up 55 pixels to each */
 	printf("\nStart reading the pixels of the image"); 
 	
+	/* Calculate the number of rows/columns each thread will handle */
+	rowsByThread = image->numRows/nThreads;
+	columnsByThread = image->numColumns/nThreads;
+	
 	/* If the number of threads is 1 we execute the reading in the main thread, otherwise we create children */
 	if(nThreads>1){
 		for(threadCounter=0; threadCounter<nThreads; threadCounter++){
-			//pthread_create(&threadId[threadCounter], NULL, function, arguments);	
+			/* Set the parameters to be passed to the method that set the Image struct */
+			params.beginColumn = threadCounter*columnsByThread;
+			params.beginRow = threadCounter*rowsByThread;
+			params.endColumn = ((threadCounter+1)*columnsByThread)-1;
+			params.endRow = ((threadCounter+1)*rowsByThread)-1;
+			params.image = image;
+			params.input = input;
+			
+			pthread_create(&threadId[threadCounter], NULL, updateValues, &params);	
+		}
+		
+		for(threadCounter=0; threadCounter<nThreads; threadCounter++){
+			pthread_join(threadId[threadCounter], NULL);
 		}
 	} else{
 		/* Set the parameters to be passed to the method that set the Image struct */
@@ -147,17 +157,13 @@ int main(int argc, char *argv[]) {
 	struct PGMImage image;
 	
 	/* Variable for the threads creation */	
-	pthread_t thread0;
-	int parameter = 0;
-	int numThreads = 1;
+	int numThreads = 2;
 	
 	/* Calls method to read PGM image */
 	readImage(argv[1], &image, 1);
 	
 	/* Calls method to write the new PGM image*/
 	saveImage(argv[2], &image);
-	
-	pthread_create(&thread0, NULL, do_something, parameter);
-	pthread_join(thread0, NULL);
+
 	return 0;
 }
