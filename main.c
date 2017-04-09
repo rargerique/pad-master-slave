@@ -11,7 +11,7 @@ struct PGMImage{
 	int numRows;
 	int numColumns;
 	int maxValue;
-	int image[512][512];
+	int image[965][965];
 };
 
 struct Params{
