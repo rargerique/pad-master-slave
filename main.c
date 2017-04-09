@@ -11,7 +11,7 @@ struct PGMImage{
 	int numRows;
 	int numColumns;
 	int maxValue;
-	int image[965][965];
+	int** image;
 };
 
 struct Params{
@@ -46,6 +46,7 @@ void *updateValues(void *parameters){
 void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Variables to assist with the image reading */
 	FILE *input;
+	int i;
 	
 	/* Variables to assist with the threads control */
 	int threadCounter, rowsByThread, columnsByThread;
@@ -80,6 +81,12 @@ void readImage(char *fileName[], struct PGMImage *image, int nThreads){
 	/* Read number of rows, columns and max value */
 	fscanf(input, "%d %d %d", &image->numRows, &image->numColumns, &image->maxValue);
 	printf("\nNumber of rows: %d \nNumber of columns: %d \nMax brightness value: %d", image->numRows, image->numColumns, image->maxValue);
+	
+	/* Dinamically alloc size for the image matrix */
+	image->image = malloc(image->numRows * sizeof(int*));
+	for(i=0; i<image->numRows; i++){
+		image->image[i] = malloc(image->numColumns * sizeof(int));
+	}
 	
 	/* Reads each of the pixels and adds up 55 pixels to each */
 	printf("\nStart reading the pixels of the image"); 
